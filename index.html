@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#12160f">
+<title>Chessify — Chess</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12160f;
+    --ink-2:#171d15;
+    --panel:#1c231b;
+    --panel-2:#212a1f;
+    --border:#333f2f;
+    --border-soft:#2a3327;
+    --cream:#eee7d6;
+    --cream-dim:#c9c2ac;
+    --sage:#5b7a63;
+    --sage-light:#7c9a80;
+    --sage-dark:#31402f;
+    --board-light:#eee3c8;
+    --board-dark:#5c7452;
+    --gold:#c9a24b;
+    --gold-soft:#e2c785;
+    --brick:#b3543f;
+    --brick-soft:#e0a48f;
+    --muted:#8d9788;
+    --shadow: 0 12px 28px rgba(0,0,0,0.35);
+    --radius: 8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%; overscroll-behavior-y:contain;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1a2117 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, #191f16 0%, transparent 55%),
+      var(--ink);
+    color:var(--cream);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    min-height:100%;
+  }
+  ::selection{ background:var(--gold); color:#1a1a12; }
+  button{ font-family:inherit; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+  input{ font-family:inherit; }
+  a{ color:var(--gold-soft); }
+  .board, .sq, .piece{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 20px 60px; padding-top:max(22px, env(safe-area-inset-top)); padding-left:max(20px, env(safe-area-inset-left)); padding-right:max(20px, env(safe-area-inset-right)); padding-bottom:max(60px, env(safe-area-inset-bottom)); }
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:16px; margin-bottom:22px; flex-wrap:wrap;
+  }
+  .wordmark{ display:flex; align-items:baseline; gap:12px; }
+  .wordmark h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:30px; letter-spacing:0.2px;
+    margin:0; color:var(--cream);
+  }
+  .wordmark h1 em{ color:var(--gold-soft); font-style:normal; }
+  .wordmark .tag{ color:var(--muted); font-size:13.5px; }
+  .top-status{ display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--muted); }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--sage-light); display:inline-block; }
+  .dot.on{ background:var(--gold); box-shadow:0 0 0 3px rgba(201,162,75,0.18); }
+  .elo-badge{
+    font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:var(--gold-soft);
+    background:var(--panel); border:1px solid var(--border-soft); border-radius:20px;
+    padding:5px 14px; white-space:nowrap;
+  }
+
+  /* ---------- Setup / Lobby ---------- */
+  .setup{
+    display:grid; grid-template-columns:1fr; gap:16px;
+    max-width:760px; margin:40px auto 0;
+  }
+  .lede{ text-align:center; margin-bottom:6px; }
+  .lede h2{ font-family:'Fraunces',serif; font-weight:600; font-size:26px; margin:0 0 8px; }
+  .lede p{ color:var(--muted); font-size:15px; margin:0; max-width:480px; margin:0 auto; line-height:1.55; }
+
+  .mode-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:18px; }
+  @media (max-width:680px){ .mode-grid{ grid-template-columns:1fr; } }
+
+  .mode-card{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border-soft); border-radius:var(--radius);
+    padding:18px 16px; text-align:left; color:var(--cream);
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .mode-card:hover{ border-color:var(--sage-light); transform:translateY(-2px); }
+  .mode-card.active{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+  .mode-card .glyph{ font-size:26px; margin-bottom:8px; display:block; }
+  .mode-card h3{ font-family:'Fraunces',serif; font-size:17px; margin:0 0 4px; font-weight:600; }
+  .mode-card p{ margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
+
+  .panel{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border-soft); border-radius:var(--radius);
+    padding:18px;
+  }
+  .field-row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px; }
+  .field-label{ font-size:12px; text-transform:none; color:var(--muted); min-width:82px; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    padding:7px 13px; border-radius:20px; border:1px solid var(--border);
+    background:var(--ink-2); color:var(--cream-dim); font-size:13px;
+  }
+  .chip.on{ border-color:var(--gold); color:var(--gold-soft); background:rgba(201,162,75,0.08); }
+
+  .btn{
+    border:1px solid var(--border); background:var(--ink-2); color:var(--cream);
+    padding:10px 18px; border-radius:6px; font-size:14px; font-weight:600;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .btn:hover{ border-color:var(--sage-light); }
+  .btn.primary{ background:var(--sage); border-color:var(--sage); color:#0f150e; }
+  .btn.primary:hover{ background:var(--sage-light); }
+  .btn.gold{ background:var(--gold); border-color:var(--gold); color:#241c07; }
+  .btn.gold:hover{ background:var(--gold-soft); }
+  .btn.danger{ border-color:var(--brick); color:var(--brick-soft); background:transparent; }
+  .btn.danger:hover{ background:rgba(179,84,63,0.12); }
+  .btn.ghost{ background:transparent; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.block{ width:100%; }
+  .btn.sm{ padding:7px 12px; font-size:12.5px; }
+
+  .code-input{
+    background:var(--ink-2); border:1px solid var(--border); color:var(--cream);
+    padding:10px 14px; border-radius:6px; font-size:18px; letter-spacing:4px;
+    text-transform:uppercase; width:160px; font-family:'Fraunces',serif; font-weight:600;
+  }
+  .code-input:focus{ outline:none; border-color:var(--gold); }
+
+  .err-msg{ color:var(--brick-soft); font-size:13px; margin-top:8px; }
+
+  .room-code-display{
+    font-family:'Fraunces',serif; font-weight:700; font-size:40px; letter-spacing:8px;
+    color:var(--gold-soft); text-align:center; padding:6px 0;
+  }
+  .waiting-row{ display:flex; align-items:center; justify-content:center; gap:10px; color:var(--muted); font-size:14px; }
+  .spin{
+    width:14px; height:14px; border-radius:50%; border:2px solid var(--border);
+    border-top-color:var(--gold); animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- Game layout ---------- */
+  .game-grid{
+    display:grid; grid-template-columns:minmax(0,560px) 320px; gap:20px; justify-content:center;
+    align-items:start;
+  }
+  @media (max-width:940px){ .game-grid{ grid-template-columns:1fr; } }
+
+  .board-col{ display:flex; flex-direction:column; gap:10px; }
+
+  .player-strip{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--panel); border:1px solid var(--border-soft); border-radius:6px;
+    padding:9px 12px;
+  }
+  .player-strip .who{ display:flex; align-items:center; gap:9px; font-size:14px; }
+  .player-strip .swatch{ width:15px; height:15px; border-radius:3px; border:1px solid rgba(0,0,0,0.25); }
+  .swatch.w{ background:var(--board-light); }
+  .swatch.b{ background:#2b3428; border-color:var(--border); }
+  .player-strip .name{ font-weight:600; }
+  .player-strip .clock{
+    font-family:'Fraunces',serif; font-weight:600; font-size:19px; color:var(--cream);
+    background:var(--ink-2); padding:3px 12px; border-radius:5px; min-width:76px; text-align:center;
+    border:1px solid var(--border);
+  }
+  .player-strip .clock.low{ color:var(--brick-soft); border-color:var(--brick); }
+  .player-strip .clock.active{ border-color:var(--gold); color:var(--gold-soft); }
+  .captured-row{ font-size:16px; letter-spacing:1px; color:var(--cream-dim); min-height:14px; }
+  .captured-row .adv{ color:var(--gold-soft); font-size:12px; margin-left:4px; }
+
+  .board-shell{
+    position:relative; width:100%; aspect-ratio:1/1;
+    background:var(--sage-dark); border-radius:6px; padding:22px;
+    border:1px solid var(--border-soft); box-shadow:var(--shadow);
+  }
+  .board{
+    position:relative; width:100%; height:100%;
+    display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+    border-radius:2px; overflow:hidden; box-shadow:0 0 0 1px rgba(0,0,0,0.35);
+  }
+  .sq{ position:relative; display:flex; align-items:center; justify-content:center; user-select:none; }
+  .sq.light{ background:var(--board-light); }
+  .sq.dark{ background:var(--board-dark); }
+  .sq .coord{
+    position:absolute; font-size:10px; font-weight:700; opacity:0.55; pointer-events:none;
+  }
+  .sq .coord.file{ bottom:2px; right:4px; }
+  .sq .coord.rank{ top:2px; left:3px; }
+  .sq.light .coord{ color:var(--board-dark); }
+  .sq.dark .coord{ color:var(--board-light); }
+
+  .piece{
+    font-size:min(7.4vw,42px); line-height:1; cursor:pointer; position:relative; z-index:3;
+    filter:drop-shadow(0 2px 1px rgba(0,0,0,0.35));
+    transition:transform .08s ease;
+  }
+  .piece.white{ color:#faf6ea; -webkit-text-stroke:1px #2a2a20; }
+  .piece.black{ color:#20241d; }
+  .piece:hover{ transform:scale(1.06); }
+  .sq.no-drag .piece{ cursor:default; }
+
+  .sq.selected::after{
+    content:''; position:absolute; inset:0; box-shadow:inset 0 0 0 3px var(--gold); z-index:2;
+  }
+  .sq.last-from::before, .sq.last-to::before{
+    content:''; position:absolute; inset:0; background:rgba(201,162,75,0.30); z-index:1;
+  }
+  .sq.in-check::before{
+    content:''; position:absolute; inset:0; background:rgba(179,84,63,0.55); z-index:1;
+  }
+  .sq .hint{
+    position:absolute; width:30%; height:30%; border-radius:50%; background:rgba(30,30,20,0.32); z-index:2;
+    pointer-events:none;
+  }
+  .sq .hint.capture{
+    width:100%; height:100%; background:transparent; border-radius:0;
+    box-shadow:inset 0 0 0 4px rgba(179,84,63,0.65);
+  }
+  .sq.legal{ cursor:pointer; }
+  .sq.drop-hover::after{
+    content:''; position:absolute; inset:0; box-shadow:inset 0 0 0 3px var(--gold-soft); z-index:2;
+    background:rgba(201,162,75,0.14);
+  }
+  .piece.drag-hidden{ opacity:0; }
+  .drag-ghost{
+    position:fixed; top:0; left:0; z-index:9999; pointer-events:none;
+    font-size:min(7.4vw,42px); line-height:1; will-change:transform;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+    transform-origin:center center;
+  }
+  .drag-ghost.white{ color:#faf6ea; -webkit-text-stroke:1px #2a2a20; }
+  .drag-ghost.black{ color:#20241d; }
+
+  /* promotion modal */
+  .modal-veil{
+    position:fixed; inset:0; background:rgba(10,12,8,0.72); display:flex; align-items:center; justify-content:center;
+    z-index:50; backdrop-filter:blur(2px);
+  }
+  .modal{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:22px;
+    text-align:center; box-shadow:var(--shadow); max-width:340px;
+  }
+  .modal h3{ font-family:'Fraunces',serif; margin:0 0 14px; font-size:17px; }
+  .promo-choices{ display:flex; gap:10px; justify-content:center; }
+  .promo-choices button{
+    width:56px; height:56px; font-size:32px; border-radius:6px; border:1px solid var(--border);
+    background:var(--ink-2); color:var(--cream);
+  }
+  .promo-choices button:hover{ border-color:var(--gold); }
+  .modal .end-msg{ font-family:'Fraunces',serif; font-size:20px; margin-bottom:6px; color:var(--gold-soft); }
+  .modal .end-sub{ color:var(--muted); font-size:13.5px; margin-bottom:18px; }
+  .modal .end-elo{ font-size:14px; color:var(--cream-dim); margin:-8px 0 16px; }
+  .modal .end-elo b{ color:var(--cream); }
+  .modal .end-elo.up{ color:var(--sage-light); }
+  .modal .end-elo.down{ color:var(--brick-soft); }
+  .modal .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+  /* ---------- Sidebar ---------- */
+  .side{ display:flex; flex-direction:column; gap:14px; }
+  .tabs{ display:flex; gap:6px; background:var(--panel); border:1px solid var(--border-soft); border-radius:6px; padding:4px; }
+  .tab{ flex:1; text-align:center; padding:8px 4px; font-size:12.5px; border-radius:4px; color:var(--muted); background:transparent; border:none; font-weight:600; }
+  .tab.active{ background:var(--sage-dark); color:var(--gold-soft); }
+
+  .status-banner{
+    font-size:13.5px; padding:10px 12px; border-radius:6px; background:var(--panel);
+    border:1px solid var(--border-soft); color:var(--cream-dim); line-height:1.5;
+  }
+  .status-banner.check{ border-color:var(--brick); color:var(--brick-soft); }
+  .status-banner b{ color:var(--gold-soft); }
+
+  .history-panel{ max-height:260px; overflow-y:auto; }
+  .history-panel table{ width:100%; border-collapse:collapse; font-size:13px; }
+  .history-panel td{ padding:4px 6px; color:var(--cream-dim); }
+  .history-panel td.n{ color:var(--muted); width:26px; }
+  .history-panel tr:hover td{ background:rgba(255,255,255,0.02); }
+
+  .history-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .history-full-table{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+  .history-full-table th{ text-align:left; color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:0.4px; padding:8px 10px; border-bottom:1px solid var(--border-soft); }
+  .history-full-table td{ padding:9px 10px; color:var(--cream-dim); border-bottom:1px solid var(--border-soft); white-space:nowrap; }
+  .history-full-table tr:hover td{ background:rgba(255,255,255,0.02); }
+  .history-full-table td.outcome.win{ color:var(--sage-light); font-weight:600; }
+  .history-full-table td.outcome.loss{ color:var(--brick-soft); font-weight:600; }
+  .history-full-table td.outcome.draw{ color:var(--gold-soft); font-weight:600; }
+
+  .controls-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:13px; color:var(--cream-dim); padding:2px 0; }
+  .switch{ width:36px; height:20px; border-radius:12px; background:var(--ink-2); border:1px solid var(--border); position:relative; }
+  .switch.on{ background:var(--sage); border-color:var(--sage); }
+  .switch::after{ content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:var(--cream); top:2px; left:2px; transition:left .12s ease; }
+  .switch.on::after{ left:18px; }
+
+  .room-box{ font-size:13px; color:var(--cream-dim); line-height:1.6; }
+  .room-box .code{ font-family:'Fraunces',serif; font-weight:700; letter-spacing:3px; color:var(--gold-soft); font-size:18px; }
+
+  .chat-log{ max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .chat-msg{ font-size:12.5px; color:var(--cream-dim); }
+  .chat-msg b{ color:var(--gold-soft); }
+  .chat-input-row{ display:flex; gap:6px; }
+  .chat-input-row input{
+    flex:1; background:var(--ink-2); border:1px solid var(--border); color:var(--cream); border-radius:5px; padding:7px 10px; font-size:12.5px;
+  }
+  .chat-input-row input:focus{ outline:none; border-color:var(--gold); }
+
+  .small-muted{ font-size:12px; color:var(--muted); }
+
+  footer.credit{ text-align:center; color:var(--muted); font-size:11.5px; margin-top:30px; }
+
+  @media (max-width:520px){
+    .wordmark h1{ font-size:24px; }
+    .mode-grid{ gap:10px; }
+  }
+
+  /* ---------- Mobile-friendly pass ---------- */
+  @media (max-width:680px){
+    .wrap{ padding:14px 10px 40px; padding-top:max(14px, env(safe-area-inset-top)); }
+    header.top{ margin-bottom:14px; gap:8px 10px; }
+    .chip{ padding:9px 14px; font-size:13.5px; }
+    .btn{ padding:11px 16px; min-height:42px; }
+    .btn.sm{ padding:9px 10px; font-size:12.5px; min-height:38px; }
+    .field-row{ gap:8px; }
+    .field-label{ min-width:100%; margin-bottom:2px; }
+    .board-shell{ padding:12px; border-radius:4px; }
+    .piece{ font-size:min(9.5vw,42px); }
+    .controls-grid{ grid-template-columns:1fr 1fr; gap:6px; }
+    .game-grid{ gap:12px; }
+    .player-strip{ padding:8px 10px; }
+    .player-strip .clock{ font-size:16px; min-width:64px; padding:3px 8px; }
+    .history-panel{ max-height:180px; }
+    .modal{ max-width:88vw; padding:18px; }
+    .promo-choices button{ width:50px; height:50px; font-size:28px; }
+    .code-input, .chat-input-row input{ font-size:16px; } /* prevents iOS auto-zoom on focus */
+    #btnHomeNav, #btnHistoryNav{ min-width:44px; }
+  }
+  @media (max-width:400px){
+    .wordmark h1{ font-size:21px; }
+    .wordmark .tag{ display:none; }
+    .board-shell{ padding:8px; }
+  }
+  /* Larger, thumb-friendly tap targets everywhere on touch devices */
+  @media (pointer:coarse){
+    .chip, .btn, .mode-card, .switch{ min-height:40px; }
+    .sq{ touch-action:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="wordmark">
+      <h1>CHESSIFY<em>.</em></h1>
+      <span class="tag">A chess room for two, anywhere.</span>
+    </div>
+    <div class="top-status" id="topStatus"></div>
+    <button class="btn sm ghost" id="btnHomeNav" type="button" title="Home" style="display:none;">⌂ Home</button>
+    <button class="btn sm ghost" id="btnHistoryNav" type="button" style="display:none;">History</button>
+    <div class="elo-badge" id="eloBadge" title="Your Elo rating — only Vs. Computer games affect it"></div>
+  </header>
+
+  <div id="app"></div>
+
+  <footer class="credit">Chessify — offline pass-and-play, a computer opponent, or a private room. No accounts, just a code.</footer>
+</div>
+
+<script>
+/* =========================================================================
+   CHESS ENGINE
+   ========================================================================= */
+const FILES = 'abcdefgh';
+const KNIGHT_D = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const KING_D   = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const BISHOP_D = [[-1,-1],[-1,1],[1,-1],[1,1]];
+const ROOK_D   = [[-1,0],[1,0],[0,-1],[0,1]];
+const PIECE_GLYPH = {
+  wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙',
+  bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟'
+};
+const VALUES = {P:100,N:320,B:330,R:500,Q:900,K:20000};
+const FULL_SET = {P:8,N:2,B:2,R:2,Q:1};
+
+function inBoard(r,c){ return r>=0&&r<8&&c>=0&&c<8; }
+function pieceColor(p){ return p ? p[0] : null; }
+function pieceType(p){ return p ? p[1] : null; }
+function cloneState(s){
+  return {
+    board: s.board.map(row=>row.slice()),
+    turn: s.turn,
+    castling: {...s.castling},
+    ep: s.ep ? {...s.ep} : null,
+    halfmove: s.halfmove,
+    fullmove: s.fullmove,
+    history: s.history.slice()
+  };
+}
+
+function createInitialState(){
+  const back = ['R','N','B','Q','K','B','N','R'];
+  const board = Array.from({length:8},()=>Array(8).fill(null));
+  for(let c=0;c<8;c++){
+    board[0][c] = 'b'+back[c];
+    board[1][c] = 'bP';
+    board[6][c] = 'wP';
+    board[7][c] = 'w'+back[c];
+  }
+  return {
+    board, turn:'w',
+    castling:{wK:true,wQ:true,bK:true,bQ:true},
+    ep:null, halfmove:0, fullmove:1, history:[]
+  };
+}
+
+function findKing(board,color){
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++) if(board[r][c]===color+'K') return {r,c};
+  return null;
+}
+
+function isSquareAttacked(board,r,c,byColor){
+  const pr = byColor==='w' ? r+1 : r-1;
+  for(const dc of [-1,1]){
+    const pc=c+dc;
+    if(inBoard(pr,pc) && board[pr][pc]===byColor+'P') return true;
+  }
+  for(const [dr,dc] of KNIGHT_D){
+    const nr=r+dr,nc=c+dc;
+    if(inBoard(nr,nc) && board[nr][nc]===byColor+'N') return true;
+  }
+  for(const [dr,dc] of KING_D){
+    const nr=r+dr,nc=c+dc;
+    if(inBoard(nr,nc) && board[nr][nc]===byColor+'K') return true;
+  }
+  for(const [dr,dc] of BISHOP_D){
+    let nr=r+dr,nc=c+dc;
+    while(inBoard(nr,nc)){
+      const p=board[nr][nc];
+      if(p){ if(pieceColor(p)===byColor && (pieceType(p)==='B'||pieceType(p)==='Q')) return true; break; }
+      nr+=dr; nc+=dc;
+    }
+  }
+  for(const [dr,dc] of ROOK_D){
+    let nr=r+dr,nc=c+dc;
+    while(inBoard(nr,nc)){
+      const p=board[nr][nc];
+      if(p){ if(pieceColor(p)===byColor && (pieceType(p)==='R'||pieceType(p)==='Q')) return true; break; }
+      nr+=dr; nc+=dc;
+    }
+  }
+  return false;
+}
+
+function pseudoMovesForSquare(state,r,c){
+  const board=state.board;
+  const p=board[r][c];
+  if(!p) return [];
+  const color=pieceColor(p), type=pieceType(p);
+  const enemy = color==='w'?'b':'w';
+  const moves=[];
+  if(type==='P'){
+    const dir = color==='w' ? -1 : 1;
+    const startRow = color==='w' ? 6 : 1;
+    const promoRow = color==='w' ? 0 : 7;
+    if(inBoard(r+dir,c) && !board[r+dir][c]){
+      const promo = (r+dir===promoRow) ? 'Q' : null;
+      moves.push({from:{r,c}, to:{r:r+dir,c}, captured:null, promotion:promo, _promoChoices: !!promo});
+      if(r===startRow && !board[r+2*dir][c]){
+        moves.push({from:{r,c}, to:{r:r+2*dir,c}, captured:null, doubleStep:true});
+      }
+    }
+    for(const dc of [-1,1]){
+      const nr=r+dir, nc=c+dc;
+      if(!inBoard(nr,nc)) continue;
+      if(board[nr][nc] && pieceColor(board[nr][nc])===enemy){
+        const promo = (nr===promoRow) ? 'Q' : null;
+        moves.push({from:{r,c}, to:{r:nr,c:nc}, captured:board[nr][nc], promotion:promo, _promoChoices: !!promo});
+      } else if(state.ep && state.ep.r===nr && state.ep.c===nc){
+        moves.push({from:{r,c}, to:{r:nr,c:nc}, isEnPassant:true, captured: color==='w'?'bP':'wP'});
+      }
+    }
+  } else if(type==='N'){
+    for(const [dr,dc] of KNIGHT_D){
+      const nr=r+dr,nc=c+dc;
+      if(inBoard(nr,nc) && (!board[nr][nc] || pieceColor(board[nr][nc])===enemy)){
+        moves.push({from:{r,c}, to:{r:nr,c:nc}, captured: board[nr][nc]||null});
+      }
+    }
+  } else if(type==='B'||type==='R'||type==='Q'){
+    const dirs = type==='B' ? BISHOP_D : type==='R' ? ROOK_D : [...BISHOP_D,...ROOK_D];
+    for(const [dr,dc] of dirs){
+      let nr=r+dr,nc=c+dc;
+      while(inBoard(nr,nc)){
+        if(!board[nr][nc]){ moves.push({from:{r,c}, to:{r:nr,c:nc}, captured:null}); }
+        else {
+          if(pieceColor(board[nr][nc])===enemy) moves.push({from:{r,c}, to:{r:nr,c:nc}, captured:board[nr][nc]});
+          break;
+        }
+        nr+=dr; nc+=dc;
+      }
+    }
+  } else if(type==='K'){
+    for(const [dr,dc] of KING_D){
+      const nr=r+dr,nc=c+dc;
+      if(inBoard(nr,nc) && (!board[nr][nc] || pieceColor(board[nr][nc])===enemy)){
+        moves.push({from:{r,c}, to:{r:nr,c:nc}, captured: board[nr][nc]||null});
+      }
+    }
+    const homeRow = color==='w' ? 7 : 0;
+    if(r===homeRow && c===4){
+      const castleK = color==='w' ? state.castling.wK : state.castling.bK;
+      const castleQ = color==='w' ? state.castling.wQ : state.castling.bQ;
+      if(castleK && !board[homeRow][5] && !board[homeRow][6] && board[homeRow][7]===color+'R'){
+        if(!isSquareAttacked(board,homeRow,4,enemy) && !isSquareAttacked(board,homeRow,5,enemy) && !isSquareAttacked(board,homeRow,6,enemy)){
+          moves.push({from:{r,c}, to:{r:homeRow,c:6}, captured:null, castle:'K'});
+        }
+      }
+      if(castleQ && !board[homeRow][3] && !board[homeRow][2] && !board[homeRow][1] && board[homeRow][0]===color+'R'){
+        if(!isSquareAttacked(board,homeRow,4,enemy) && !isSquareAttacked(board,homeRow,3,enemy) && !isSquareAttacked(board,homeRow,2,enemy)){
+          moves.push({from:{r,c}, to:{r:homeRow,c:2}, captured:null, castle:'Q'});
+        }
+      }
+    }
+  }
+  return moves;
+}
+
+function applyMove(state, move){
+  const s = cloneState(state);
+  const board = s.board;
+  const p = board[move.from.r][move.from.c];
+  const color = pieceColor(p), type = pieceType(p);
+  let newEp = null;
+  board[move.from.r][move.from.c] = null;
+  if(move.isEnPassant) board[move.from.r][move.to.c] = null;
+  board[move.to.r][move.to.c] = move.promotion ? (color+move.promotion) : p;
+  if(move.castle==='K'){
+    const homeRow = move.from.r;
+    board[homeRow][5] = board[homeRow][7]; board[homeRow][7] = null;
+  } else if(move.castle==='Q'){
+    const homeRow = move.from.r;
+    board[homeRow][3] = board[homeRow][0]; board[homeRow][0] = null;
+  }
+  if(type==='P' && Math.abs(move.to.r-move.from.r)===2){
+    newEp = { r:(move.from.r+move.to.r)/2, c:move.from.c };
+  }
+  if(type==='K'){
+    if(color==='w'){ s.castling.wK=false; s.castling.wQ=false; } else { s.castling.bK=false; s.castling.bQ=false; }
+  }
+  if(type==='R'){
+    if(move.from.r===7 && move.from.c===0) s.castling.wQ=false;
+    if(move.from.r===7 && move.from.c===7) s.castling.wK=false;
+    if(move.from.r===0 && move.from.c===0) s.castling.bQ=false;
+    if(move.from.r===0 && move.from.c===7) s.castling.bK=false;
+  }
+  if(move.to.r===7 && move.to.c===0) s.castling.wQ=false;
+  if(move.to.r===7 && move.to.c===7) s.castling.wK=false;
+  if(move.to.r===0 && move.to.c===0) s.castling.bQ=false;
+  if(move.to.r===0 && move.to.c===7) s.castling.bK=false;
+
+  s.ep = newEp;
+  s.halfmove = (type==='P' || move.captured) ? 0 : s.halfmove+1;
+  if(color==='b') s.fullmove += 1;
+  s.turn = color==='w' ? 'b' : 'w';
+  s.history = [...state.history, {...move, piece:p}];
+  return s;
+}
+
+function legalMovesForSquare(state,r,c){
+  const p = state.board[r][c];
+  if(!p) return [];
+  const color = pieceColor(p);
+  if(color !== state.turn) return [];
+  const raw = pseudoMovesForSquare(state,r,c);
+  const legal = [];
+  for(const m of raw){
+    const next = applyMove(state,m);
+    const k = findKing(next.board,color);
+    if(!k) continue;
+    if(!isSquareAttacked(next.board,k.r,k.c, color==='w'?'b':'w')) legal.push(m);
+  }
+  return legal;
+}
+
+function allLegalMoves(state,color){
+  let all=[];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = state.board[r][c];
+    if(p && pieceColor(p)===color) all = all.concat(legalMovesForSquare(state,r,c));
+  }
+  return all;
+}
+
+function isInCheck(state,color){
+  const k = findKing(state.board,color);
+  if(!k) return false;
+  return isSquareAttacked(state.board,k.r,k.c, color==='w'?'b':'w');
+}
+
+function insufficientMaterial(board){
+  const pieces=[];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++) if(board[r][c]) pieces.push(board[r][c]);
+  if(pieces.length>4) return false;
+  const nonKing = pieces.filter(p=>pieceType(p)!=='K');
+  if(nonKing.length===0) return true;
+  if(nonKing.length===1 && (pieceType(nonKing[0])==='B'||pieceType(nonKing[0])==='N')) return true;
+  if(nonKing.length===2 && nonKing.every(p=>pieceType(p)==='B')) return true;
+  return false;
+}
+
+function positionKey(state){
+  let b='';
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++) b += state.board[r][c]||'-';
+  const cast = (state.castling.wK?'K':'')+(state.castling.wQ?'Q':'')+(state.castling.bK?'k':'')+(state.castling.bQ?'q':'');
+  const ep = state.ep ? (state.ep.r+','+state.ep.c) : '-';
+  return b+'|'+state.turn+'|'+cast+'|'+ep;
+}
+function isThreefoldRepetition(state){
+  // Replay from the start, counting how many times the current position's
+  // key has occurred (initial position included). 3+ occurrences => draw.
+  const targetKey = positionKey(state);
+  let s = createInitialState();
+  let count = positionKey(s)===targetKey ? 1 : 0;
+  for(const mv of state.history){
+    s = applyMove(s, mv);
+    if(positionKey(s)===targetKey){
+      count++;
+      if(count>=3) return true;
+    }
+  }
+  return count>=3;
+}
+
+function gameStatus(state){
+  const color = state.turn;
+  const moves = allLegalMoves(state,color);
+  const inCheck = isInCheck(state,color);
+  if(moves.length===0) return inCheck ? 'checkmate' : 'stalemate';
+  if(state.halfmove>=100) return 'draw-50';
+  if(insufficientMaterial(state.board)) return 'draw-material';
+  if(isThreefoldRepetition(state)) return 'draw-repetition';
+  return inCheck ? 'check' : 'active';
+}
+
+function squareName(r,c){ return FILES[c]+(8-r); }
+
+function moveToSAN(move, statusAfter){
+  const suf = statusAfter==='checkmate' ? '#' : statusAfter==='check' ? '+' : '';
+  if(move.castle==='K') return 'O-O'+suf;
+  if(move.castle==='Q') return 'O-O-O'+suf;
+  const type = pieceType(move.piece);
+  let s='';
+  if(type!=='P') s+=type;
+  if(move.captured || move.isEnPassant){
+    if(type==='P') s+=FILES[move.from.c];
+    s+='x';
+  }
+  s += squareName(move.to.r,move.to.c);
+  if(move.promotion) s+='='+move.promotion;
+  return s+suf;
+}
+
+/* =========================================================================
+   AI (minimax with alpha-beta)
+   ========================================================================= */
+const PST_PAWN = [
+  [0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],
+  [5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],
+  [5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]
+];
+const PST_KNIGHT = [
+  [-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],
+  [-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],
+  [-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],
+  [-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]
+];
+function pstValue(type,color,r,c){
+  const rr = color==='w' ? r : 7-r;
+  if(type==='P') return PST_PAWN[rr][c];
+  if(type==='N') return PST_KNIGHT[rr][c];
+  return 0;
+}
+function evaluate(state){
+  let score=0;
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = state.board[r][c];
+    if(!p) continue;
+    const val = VALUES[pieceType(p)] + pstValue(pieceType(p), pieceColor(p), r, c);
+    score += pieceColor(p)==='w' ? val : -val;
+  }
+  return score;
+}
+function minimax(state, depth, alpha, beta, maximizing){
+  const status = gameStatus(state);
+  if(status==='checkmate') return maximizing ? -99000-depth : 99000+depth;
+  if(status==='stalemate' || status.startsWith('draw')) return 0;
+  if(depth===0) return evaluate(state);
+  const moves = allLegalMoves(state, state.turn);
+  if(maximizing){
+    let best=-Infinity;
+    for(const m of moves){
+      const val = minimax(applyMove(state,m), depth-1, alpha, beta, false);
+      if(val>best) best=val;
+      if(val>alpha) alpha=val;
+      if(beta<=alpha) break;
+    }
+    return best;
+  } else {
+    let best=Infinity;
+    for(const m of moves){
+      const val = minimax(applyMove(state,m), depth-1, alpha, beta, true);
+      if(val<best) best=val;
+      if(val<beta) beta=val;
+      if(beta<=alpha) break;
+    }
+    return best;
+  }
+}
+function findBestMove(state, depth){
+  const color = state.turn;
+  const maximizing = color==='w';
+  let moves = allLegalMoves(state,color);
+  moves = moves.map(m=>({m, k:Math.random()})).sort((a,b)=>{
+    const av = a.m.captured ? 1 : 0, bv = b.m.captured ? 1 : 0;
+    if(av!==bv) return bv-av;
+    return a.k-b.k;
+  }).map(x=>x.m);
+  let bestMove=moves[0], bestVal = maximizing?-Infinity:Infinity;
+  for(const m of moves){
+    const val = minimax(applyMove(state,m), depth-1, -Infinity, Infinity, !maximizing);
+    if(maximizing ? val>bestVal : val<bestVal){ bestVal=val; bestMove=m; }
+  }
+  return bestMove;
+}
+
+/* ---- ELO-graded move selection ----
+   Combines search depth, a "blunder chance" (chance to just play a random
+   legal move, like a weak human occasionally does) and eval "noise" (random
+   jitter added to each candidate move's score, which makes near-equal moves
+   get picked inconsistently — the hallmark of a not-quite-perfect player).
+   Together these three knobs let a handful of engine tiers stand in for a
+   continuous ELO range. */
+function findBestMoveGraded(state, params){
+  const { depth, blunderChance, noise } = params;
+  const color = state.turn;
+  const maximizing = color==='w';
+  const moves = allLegalMoves(state, color);
+  if(moves.length===0) return null;
+  if(moves.length===1) return moves[0];
+  if(blunderChance>0 && Math.random()<blunderChance){
+    return moves[Math.floor(Math.random()*moves.length)];
+  }
+  let bestMove=moves[0], bestVal = maximizing?-Infinity:Infinity;
+  for(const m of moves){
+    let val = minimax(applyMove(state,m), Math.max(0,depth-1), -Infinity, Infinity, !maximizing);
+    if(noise>0) val += (Math.random()*2-1)*noise;
+    if(maximizing ? val>bestVal : val<bestVal){ bestVal=val; bestMove=m; }
+  }
+  return bestMove;
+}
+
+/* =========================================================================
+   SOUND
+   ========================================================================= */
+let soundOn = true;
+let actx = null;
+function beep(freq,duration,type){
+  if(!soundOn) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type = type||'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.16, actx.currentTime+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+duration);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+duration+0.02);
+  }catch(e){}
+}
+function playMoveSound(move, statusAfter){
+  if(statusAfter==='checkmate'){ beep(660,0.12,'triangle'); setTimeout(()=>beep(440,0.18,'triangle'),110); return; }
+  if(statusAfter==='check'){ beep(760,0.09,'square'); return; }
+  if(move.castle){ beep(500,0.09); setTimeout(()=>beep(560,0.09),70); return; }
+  if(move.captured || move.isEnPassant){ beep(300,0.11,'sawtooth'); return; }
+  beep(520,0.07);
+}
+
+/* =========================================================================
+   APP STATE
+   ========================================================================= */
+const app = document.getElementById('app');
+const topStatus = document.getElementById('topStatus');
+
+/* =========================================================================
+   NAVIGATION (Home button + browser/mobile back button)
+   We keep the browser history stack shallow: entering a deeper screen
+   (game, online lobby, history) pushes one state; returning to the setup
+   screen (home) replaces the current state instead of pushing, so a single
+   Back press from anywhere lands on Home rather than leaving the page.
+   ========================================================================= */
+function navPush(v){ try{ history.pushState({view:v}, '', '#'+v); }catch(e){} }
+function navReplace(v){ try{ history.replaceState({view:v}, '', '#'+v); }catch(e){} }
+window.addEventListener('popstate', (e)=>{
+  const target = (e.state && e.state.view) || 'setup';
+  if(target==='setup'){
+    stopPolling();
+    if(clockTicker) clearInterval(clockTicker);
+    view='setup'; mode=null; game=null; room=null; roomCode=null; myColor=null; selected=null; legalForSelected=[];
+    eloAppliedForGameId=null; lastEloResult=null;
+    render();
+  } else {
+    view=target; render();
+  }
+});
+
+let view = 'setup';           // 'setup' | 'online-lobby' | 'game'
+let mode = null;               // 'local' | 'ai' | 'online'
+let setupMode = 'local';       // selection on setup screen before starting
+let setupColor = 'w';          // chosen color for AI mode
+let setupDifficultyTier = 'medium'; // 'easy' | 'medium' | 'hard'
+let setupElo = 1000;                // chosen computer Elo within the tier
+let setupTimeControl = null;   // {initial, increment} or null
+
+let game = null;               // {state, clock:{whiteTime,blackTime,turnStartedAt,timeControl}, aiColor, aiThinking, over, result}
+let selected = null;           // {r,c}
+let legalForSelected = [];
+let pendingPromo = null;       // {from,to,baseMove}
+let orientation = 'w';         // which side is at the bottom
+
+/* =========================================================================
+   PLAYER ELO
+   Starts every player at 200. Updates using the standard chess Elo formula
+   — but ONLY for Online room games. Pass-and-play and Vs. Computer games
+   never touch this rating (there's no persistent opponent identity in
+   those modes to rate against). Because the expected-score term already
+   accounts for the opponent's rating, beating a stronger opponent swings
+   your rating a lot on a win, while beating a weak one barely moves it —
+   and the same logic applies in reverse for losses.
+   ========================================================================= */
+const ELO_STORAGE_KEY = 'chessify_player_elo';
+const ELO_K_FACTOR = 32;
+const ELO_FLOOR = 100;
+function loadPlayerElo(){
+  try{
+    const v = localStorage.getItem(ELO_STORAGE_KEY);
+    const n = v!==null ? parseInt(v,10) : NaN;
+    return Number.isFinite(n) ? n : 200;
+  }catch(e){ return 200; }
+}
+function savePlayerElo(v){
+  try{ localStorage.setItem(ELO_STORAGE_KEY, String(v)); }catch(e){}
+}
+let playerElo = loadPlayerElo();
+
+function expectedScore(ratingA, ratingB){
+  return 1/(1+Math.pow(10,(ratingB-ratingA)/400));
+}
+/* score: 1 = win, 0.5 = draw, 0 = loss (from the rated player's point of view) */
+function eloDeltaForResult(playerRating, opponentRating, score){
+  const expected = expectedScore(playerRating, opponentRating);
+  return Math.round(ELO_K_FACTOR*(score-expected));
+}
+/* Who won, from the perspective of `color`, given a finished-game result code. */
+function scoreForColor(result, color){
+  if(!result) return null;
+  if(result==='checkmate'){
+    const state = currentState();
+    if(!state) return null;
+    const loserColor = state.turn; // side to move is the side that got checkmated
+    return loserColor===color ? 0 : 1;
+  }
+  if(result==='stalemate' || result==='draw-agreed' || result==='draw-50' || result==='draw-material' || result==='draw-repetition') return 0.5;
+  if(result.startsWith('resigned-')){
+    const resignedColor = result.split('-')[1];
+    return resignedColor===color ? 0 : 1;
+  }
+  if(result.startsWith('timeout-')){
+    const loserColor = result.split('-')[1];
+    return loserColor===color ? 0 : 1;
+  }
+  return null;
+}
+/* Guards against double-applying: each finished online game gets a unique id
+   (room.eloGameId, regenerated on every rematch); we only ever score a given
+   id once per client. */
+let eloAppliedForGameId = null;
+let lastEloResult = null; // {before, after, delta, opponentElo} for the end-modal (Vs. Computer only)
+/* Online games are recorded to match history like any other game, but do NOT
+   move the rating — per spec, player Elo only tracks Vs. Computer results. */
+function finalizeOnlineEloIfNeeded(){
+  if(mode!=='online' || !room || room.status!=='finished' || !myColor) return;
+  const gameId = room.eloGameId || roomCode;
+  if(eloAppliedForGameId===gameId) return;
+  const amHost = myId===room.hostId;
+  const opponentElo = amHost ? (room.guestElo!=null?room.guestElo:200) : (room.hostElo!=null?room.hostElo:200);
+  const score = scoreForColor(room.result, myColor);
+  if(score===null) return;
+  eloAppliedForGameId = gameId;
+  recordHistoryEntry({
+    mode:'online',
+    resultText: resultLabel(),
+    outcome: score===1?'You won':score===0?'You lost':'Draw',
+    opponent: `Online opponent · ${opponentElo} Elo`,
+    moves: room.state.history.length,
+    timeControl: timeControlLabel(room.timeControl),
+    eloBefore: null, eloAfter: null, eloDelta: null,
+  });
+}
+
+/* =========================================================================
+   LOCAL MATCH HISTORY (up to 30 games, this browser only)
+   Every finished game — Pass & play, Vs. Computer, and Online — gets logged
+   here. Elo before/after/delta are only ever set for Vs. Computer entries,
+   since player Elo itself only tracks Vs. Computer games.
+   ========================================================================= */
+const HISTORY_STORAGE_KEY = 'chessify_history';
+const HISTORY_MAX = 30;
+function loadHistory(){
+  try{
+    const v = localStorage.getItem(HISTORY_STORAGE_KEY);
+    const arr = v ? JSON.parse(v) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveHistory(arr){
+  try{ localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(arr.slice(0,HISTORY_MAX))); }catch(e){}
+}
+let gameHistory = loadHistory();
+function recordHistoryEntry(fields){
+  const entry = Object.assign({
+    id: 'g'+Date.now()+Math.random().toString(36).slice(2,7),
+    ts: Date.now(),
+  }, fields);
+  gameHistory.unshift(entry);
+  if(gameHistory.length>HISTORY_MAX) gameHistory.length = HISTORY_MAX;
+  saveHistory(gameHistory);
+}
+function timeControlLabel(tc){
+  const preset = TIME_PRESETS.find(p=>JSON.stringify(p.value)===JSON.stringify(tc));
+  if(preset) return preset.label;
+  return tc ? `${Math.round(tc.initial/60000)}+${Math.round((tc.increment||0)/1000)}` : 'Unlimited';
+}
+/* Hooked from renderGame() for local/ai modes, mirroring finalizeOnlineEloIfNeeded's
+   pattern: check-and-record exactly once per finished game via a flag on the game object. */
+function finalizeLocalHistoryIfNeeded(){
+  if(!(mode==='local'||mode==='ai')) return;
+  if(!game || !game.over || game.historyRecorded) return;
+  game.historyRecorded = true;
+  const state = game.state;
+  const resultText = resultLabel() || statusBannerText(game.result);
+  const tcLabel = timeControlLabel(game.clock.timeControl);
+  let outcome, opponent;
+  if(mode==='local'){
+    opponent = 'Pass & play';
+    if(game.result==='checkmate'){
+      outcome = (state.turn==='w' ? 'Black' : 'White') + ' won';
+    } else {
+      outcome = 'Draw';
+    }
+  } else {
+    const humanColor = orientationHumanColor();
+    const score = scoreForColor(game.result, humanColor);
+    outcome = score===1 ? 'You won' : score===0 ? 'You lost' : 'Draw';
+    opponent = `Computer · ${game.aiElo} Elo`;
+  }
+  let eloBefore=null, eloAfter=null, eloDelta=null;
+  if(mode==='ai'){
+    const humanColor = orientationHumanColor();
+    const score = scoreForColor(game.result, humanColor);
+    if(score!==null){
+      eloBefore = playerElo;
+      eloDelta = eloDeltaForResult(eloBefore, game.aiElo, score);
+      eloAfter = Math.max(ELO_FLOOR, eloBefore+eloDelta);
+      eloDelta = eloAfter-eloBefore;
+      playerElo = eloAfter;
+      savePlayerElo(playerElo);
+      lastEloResult = { before:eloBefore, after:eloAfter, delta:eloDelta, opponentElo:game.aiElo };
+    }
+  }
+  recordHistoryEntry({
+    mode, resultText, outcome, opponent,
+    moves: state.history.length,
+    timeControl: tcLabel,
+    eloBefore, eloAfter, eloDelta,
+  });
+}
+
+// online
+let myId = 'p_' + Math.random().toString(36).slice(2,10);
+let roomCode = null;
+let room = null;               // last known room object
+let myColor = null;            // 'w' | 'b' | null(spectator)
+let pollTimer = null;
+let joinError = '';
+let createError = '';
+let joinCodeInput = '';
+let chatInput = '';
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genCode(){
+  let s='';
+  for(let i=0;i<5;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+
+const TIME_PRESETS = [
+  {label:'Unlimited', value:null},
+  {label:'3 + 2', value:{initial:3*60000, increment:2000}},
+  {label:'5 + 0', value:{initial:5*60000, increment:0}},
+  {label:'10 + 0', value:{initial:10*60000, increment:0}},
+  {label:'10 + 5', value:{initial:10*60000, increment:5000}},
+  {label:'15 + 10', value:{initial:15*60000, increment:10000}},
+];
+/* Computer strength, expressed as Elo. Each tier offers a handful of Elo
+   points the player can pick between; engine depth/blunder-rate/noise are
+   tuned per point so the numbers roughly track real playing strength. */
+const ELO_TIERS = {
+  easy:   [
+    {elo:400,  depth:1, blunderChance:0.38, noise:170},
+    {elo:600,  depth:1, blunderChance:0.26, noise:130},
+    {elo:800,  depth:1, blunderChance:0.16, noise:90},
+  ],
+  medium: [
+    {elo:1000, depth:2, blunderChance:0.11, noise:60},
+    {elo:1200, depth:2, blunderChance:0.06, noise:35},
+    {elo:1400, depth:2, blunderChance:0.03, noise:20},
+  ],
+  hard:   [
+    {elo:1600, depth:3, blunderChance:0.015, noise:12},
+    {elo:1800, depth:3, blunderChance:0.005, noise:6},
+    {elo:2000, depth:3, blunderChance:0,     noise:0},
+  ],
+};
+const ELO_TIER_LABELS = {easy:'Easy', medium:'Medium', hard:'Hard'};
+function eloParams(elo){
+  for(const tier of Object.keys(ELO_TIERS)){
+    const found = ELO_TIERS[tier].find(e=>e.elo===elo);
+    if(found) return found;
+  }
+  return ELO_TIERS.medium[0];
+}
+function tierForElo(elo){
+  for(const tier of Object.keys(ELO_TIERS)){
+    if(ELO_TIERS[tier].some(e=>e.elo===elo)) return tier;
+  }
+  return 'medium';
+}
+
+/* =========================================================================
+   RENDER — root dispatcher
+   ========================================================================= */
+function render(){
+  if(view==='setup') renderSetup();
+  else if(view==='online-lobby') renderOnlineLobby();
+  else if(view==='history') renderHistory();
+  else renderGame();
+  renderTopStatus();
+  renderEloBadge();
+  renderNavButtons();
+}
+function renderNavButtons(){
+  const homeBtn = document.getElementById('btnHomeNav');
+  const historyBtn = document.getElementById('btnHistoryNav');
+  const onHome = view==='setup';
+  // Home only shows once you've left the home screen. History only shows on
+  // the home screen itself — once you're on the history page, Home takes its place.
+  if(homeBtn) homeBtn.style.display = onHome ? 'none' : '';
+  if(historyBtn) historyBtn.style.display = onHome ? '' : 'none';
+}
+function renderTopStatus(){
+  if(mode==='online' && room){
+    const connected = room.status!=='waiting';
+    topStatus.innerHTML = `<span class="dot ${connected?'on':''}"></span> Room <b style="color:var(--gold-soft)">${roomCode}</b> · ${connected?'connected':'waiting for opponent'}`;
+  } else {
+    topStatus.innerHTML='';
+  }
+}
+function renderEloBadge(){
+  const el = document.getElementById('eloBadge');
+  if(el) el.textContent = `Elo ${playerElo}`;
+}
+
+/* ---------- SETUP SCREEN ---------- */
+function renderSetup(){
+  const tcChips = TIME_PRESETS.map(tp=>{
+    const on = JSON.stringify(tp.value)===JSON.stringify(setupTimeControl);
+    return `<button class="chip ${on?'on':''}" data-tc='${encodeURIComponent(JSON.stringify(tp.value))}'>${tp.label}</button>`;
+  }).join('');
+
+  let modeExtra = '';
+  if(setupMode==='ai'){
+    const tierChips = Object.keys(ELO_TIERS).map(t=>
+      `<button class="chip ${t===setupDifficultyTier?'on':''}" data-tier="${t}">${ELO_TIER_LABELS[t]}</button>`
+    ).join('');
+    const eloChips = ELO_TIERS[setupDifficultyTier].map(e=>
+      `<button class="chip ${e.elo===setupElo?'on':''}" data-elo="${e.elo}">${e.elo}</button>`
+    ).join('');
+    const colorChips = `
+      <button class="chip ${setupColor==='w'?'on':''}" data-color="w">White</button>
+      <button class="chip ${setupColor==='b'?'on':''}" data-color="b">Black</button>
+      <button class="chip ${setupColor==='r'?'on':''}" data-color="r">Random</button>`;
+    modeExtra = `
+      <div class="field-row"><span class="field-label">Difficulty</span><div class="chip-row">${tierChips}</div></div>
+      <div class="field-row"><span class="field-label">Computer Elo</span><div class="chip-row">${eloChips}</div></div>
+      <div class="field-row"><span class="field-label">Play as</span><div class="chip-row">${colorChips}</div></div>
+      <div class="field-row"><span class="field-label">Time control</span><div class="chip-row">${tcChips}</div></div>
+      <div class="field-row" style="margin-top:16px;"><button class="btn primary" id="btnStartAI">Start game</button></div>
+    `;
+  } else if(setupMode==='local'){
+    modeExtra = `
+      <div class="field-row"><span class="field-label">Time control</span><div class="chip-row">${tcChips}</div></div>
+      <div class="field-row" style="margin-top:16px;"><button class="btn primary" id="btnStartLocal">Start game</button></div>
+    `;
+  } else if(setupMode==='online'){
+    modeExtra = `
+      <div class="field-row"><span class="field-label">Time control</span><div class="chip-row">${tcChips}</div></div>
+      <div class="field-row" style="margin-top:16px;">
+        <button class="btn primary" id="btnCreateRoom">Create room</button>
+      </div>
+      ${createError?`<div class="err-msg">${createError}</div>`:''}
+      <div class="field-row" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border-soft);">
+        <span class="small-muted">Have a code? Join a friend's room — their time control is used.</span>
+      </div>
+      <div class="field-row" style="gap:14px;">
+        <input class="code-input" id="joinCodeInput" placeholder="CODE" maxlength="5" value="${joinCodeInput}">
+        <button class="btn gold" id="btnJoinRoom">Join</button>
+      </div>
+      ${joinError?`<div class="err-msg">${joinError}</div>`:''}
+    `;
+  }
+
+  app.innerHTML = `
+    <div class="setup">
+      <div class="lede">
+        <h2>Set the board.</h2>
+        <p>Pass the device to a friend, test yourself against the engine, or share a room code with someone across the world.</p>
+      </div>
+      <div class="mode-grid">
+        <button class="mode-card ${setupMode==='local'?'active':''}" data-mode="local">
+          <span class="glyph">♟︎♙</span>
+          <h3>Pass and play</h3>
+          <p>Two players, one screen. Classic over-the-board chess.</p>
+        </button>
+        <button class="mode-card ${setupMode==='ai'?'active':''}" data-mode="ai">
+          <span class="glyph">♞</span>
+          <h3>Vs. computer</h3>
+          <p>Pick a difficulty and an Elo rating for the engine.</p>
+        </button>
+        <button class="mode-card ${setupMode==='online'?'active':''}" data-mode="online">
+          <span class="glyph">♜ ⇄ ♜</span>
+          <h3>Online room</h3>
+          <p>Create a room or enter a code. Play from separate devices.</p>
+        </button>
+      </div>
+      <div class="panel">${modeExtra}</div>
+    </div>
+  `;
+
+  app.querySelectorAll('.mode-card').forEach(el=>{
+    el.addEventListener('click', ()=>{ setupMode = el.dataset.mode; createError=''; joinError=''; render(); });
+  });
+  app.querySelectorAll('[data-tc]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const v = decodeURIComponent(el.dataset.tc);
+      setupTimeControl = v==='null' ? null : JSON.parse(v);
+      render();
+    });
+  });
+  const tierEls = app.querySelectorAll('[data-tier]');
+  tierEls.forEach(el=> el.addEventListener('click', ()=>{
+    setupDifficultyTier = el.dataset.tier;
+    setupElo = ELO_TIERS[setupDifficultyTier][0].elo; // default to lowest Elo in the newly chosen tier
+    render();
+  }));
+  const eloEls = app.querySelectorAll('[data-elo]');
+  eloEls.forEach(el=> el.addEventListener('click', ()=>{ setupElo=parseInt(el.dataset.elo,10); render(); }));
+  const colorEls = app.querySelectorAll('[data-color]');
+  colorEls.forEach(el=> el.addEventListener('click', ()=>{ setupColor=el.dataset.color; render(); }));
+
+  const btnLocal = document.getElementById('btnStartLocal');
+  if(btnLocal) btnLocal.addEventListener('click', startLocalGame);
+  const btnAI = document.getElementById('btnStartAI');
+  if(btnAI) btnAI.addEventListener('click', startAIGame);
+  const btnCreate = document.getElementById('btnCreateRoom');
+  if(btnCreate) btnCreate.addEventListener('click', createOnlineRoom);
+  const btnJoin = document.getElementById('btnJoinRoom');
+  if(btnJoin) btnJoin.addEventListener('click', ()=>{
+    const input = document.getElementById('joinCodeInput');
+    joinOnlineRoom((input.value||'').trim().toUpperCase());
+  });
+  const inputEl = document.getElementById('joinCodeInput');
+  if(inputEl){
+    inputEl.addEventListener('input', e=>{ joinCodeInput = e.target.value.toUpperCase(); });
+    inputEl.addEventListener('keydown', e=>{ if(e.key==='Enter') joinOnlineRoom((e.target.value||'').trim().toUpperCase()); });
+  }
+}
+
+/* ---------- ONLINE LOBBY (waiting for opponent) ---------- */
+function renderOnlineLobby(){
+  app.innerHTML = `
+    <div class="setup">
+      <div class="lede">
+        <h2>Room ready.</h2>
+        <p>Share this code with your opponent. The game starts the moment they join.</p>
+      </div>
+      <div class="panel" style="text-align:center;">
+        <div class="room-code-display">${roomCode}</div>
+        <div class="waiting-row"><span class="spin"></span> Waiting for opponent…</div>
+        <div class="field-row" style="justify-content:center; margin-top:16px;">
+          <button class="btn gold" id="btnCopyCode">Copy code</button>
+          <button class="btn ghost" id="btnCancelRoom">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCopyCode').addEventListener('click', ()=>{
+    navigator.clipboard?.writeText(roomCode).catch(()=>{});
+    const b = document.getElementById('btnCopyCode'); b.textContent='Copied ✓';
+    setTimeout(()=>{ b.textContent='Copy code'; },1200);
+  });
+  document.getElementById('btnCancelRoom').addEventListener('click', ()=>{
+    stopPolling(); view='setup'; mode=null; room=null; roomCode=null; navReplace('setup'); render();
+  });
+}
+
+/* ---------- MATCH HISTORY SCREEN ---------- */
+function renderHistory(){
+  const modeLabel = {local:'Pass & play', ai:'Vs. Computer', online:'Online'};
+  const rows = gameHistory.map(h=>{
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    const eloStr = h.eloDelta!=null ? `${h.eloBefore}→${h.eloAfter} (${h.eloDelta>0?'+':''}${h.eloDelta})` : '—';
+    const outcomeClass = /won/i.test(h.outcome) ? 'win' : /lost/i.test(h.outcome) ? 'loss' : 'draw';
+    return `<tr>
+      <td class="small-muted">${dateStr}</td>
+      <td>${modeLabel[h.mode]||h.mode}</td>
+      <td>${h.opponent}</td>
+      <td class="outcome ${outcomeClass}">${h.outcome}</td>
+      <td class="small-muted">${h.timeControl}</td>
+      <td class="small-muted">${h.moves}</td>
+      <td class="small-muted">${eloStr}</td>
+    </tr>`;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="setup" style="max-width:920px;">
+      <div class="lede">
+        <h2>Match history</h2>
+        <p>Your last ${gameHistory.length} of up to 30 games, stored locally in this browser. Elo only changes for Online games.</p>
+      </div>
+      <div class="panel">
+        ${gameHistory.length ? `
+          <div class="history-table-wrap">
+            <table class="history-full-table">
+              <thead><tr><th>When</th><th>Mode</th><th>Opponent</th><th>Result</th><th>Time control</th><th>Moves</th><th>Elo</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        ` : `<p class="small-muted">No games recorded yet on this device. Play a game and it'll show up here.</p>`}
+        <div class="field-row" style="margin-top:16px; justify-content:space-between;">
+          <button class="btn ghost" id="btnClearHistory" ${gameHistory.length?'':'disabled'}>Clear history</button>
+          <button class="btn primary" id="btnHistoryBack">Back</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnHistoryBack').addEventListener('click', ()=>{ view='setup'; navReplace('setup'); render(); });
+  const clearBtn = document.getElementById('btnClearHistory');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{
+    if(confirm('Clear all local match history? This cannot be undone.')){
+      gameHistory = []; saveHistory(gameHistory); render();
+    }
+  });
+}
+
+/* =========================================================================
+   START GAME FLOWS
+   ========================================================================= */
+function freshClock(tc){
+  return { timeControl: tc, whiteTime: tc?tc.initial:null, blackTime: tc?tc.initial:null, turnStartedAt: Date.now() };
+}
+
+function startLocalGame(){
+  mode='local';
+  game = { state:createInitialState(), clock:freshClock(setupTimeControl), over:false, result:null, aiColor:null };
+  selected=null; legalForSelected=[]; orientation='w';
+  view='game'; navPush('game'); render(); startClockTicker();
+}
+function startAIGame(){
+  mode='ai';
+  const humanColor = setupColor==='r' ? (Math.random()<0.5?'w':'b') : setupColor;
+  const aiColor = humanColor==='w'?'b':'w';
+  const aiElo = setupElo;
+  const aiParams = eloParams(aiElo);
+  game = { state:createInitialState(), clock:freshClock(setupTimeControl), over:false, result:null, aiColor, aiElo, aiParams, aiThinking:false };
+  selected=null; legalForSelected=[]; orientation=humanColor; lastEloResult=null;
+  view='game'; navPush('game'); render(); startClockTicker();
+  if(aiColor==='w') scheduleAIMove();
+}
+
+async function createOnlineRoom(){
+  createError='';
+  const code = genCode();
+  const initState = createInitialState();
+  const hostColor = Math.random()<0.5 ? 'w' : 'b';
+  const r = {
+    code, createdAt: Date.now(),
+    hostId: myId, guestId: null,
+    hostColor,
+    hostElo: playerElo, guestElo: null,
+    eloGameId: code+'-'+Date.now(),
+    state: initState,
+    status: 'waiting',
+    result: null,
+    timeControl: setupTimeControl,
+    whiteTime: setupTimeControl?setupTimeControl.initial:null,
+    blackTime: setupTimeControl?setupTimeControl.initial:null,
+    turnStartedAt: Date.now(),
+    drawOffer: null,
+    chat: [],
+    rematchVotes: [],
+    version: 1
+  };
+  const ok = await saveRoomRaw(r);
+  if(!ok){ createError='Could not create a room right now. Try again.'; render(); return; }
+  roomCode = code; room = r; mode='online'; myColor = hostColor;
+  view='online-lobby'; navPush('online-lobby'); render(); startPolling();
+}
+
+async function joinOnlineRoom(code){
+  joinError='';
+  if(!code || code.length<4){ joinError='Enter the room code your friend shared.'; render(); return; }
+  const r = await getRoom(code);
+  if(!r){ joinError='No room found with that code.'; render(); return; }
+  if(r.guestId && r.guestId!==myId && r.hostId!==myId){
+    // room full -> spectate
+    roomCode=code; room=r; mode='online'; myColor=null;
+    view='game'; navPush('game'); render(); startClockTicker(); startPolling();
+    return;
+  }
+  if(!r.guestId && r.hostId!==myId){
+    r.guestId = myId;
+    r.guestElo = playerElo;
+    r.status = 'active';
+    r.turnStartedAt = Date.now();
+    await saveRoomRaw(r);
+  }
+  roomCode = code; room = r;
+  myColor = (r.hostId===myId) ? r.hostColor : (r.hostColor==='w'?'b':'w');
+  mode='online';
+  orientation = myColor || 'w';
+  view='game'; navPush('game'); render(); startClockTicker(); startPolling();
+}
+
+/* =========================================================================
+   ONLINE STORAGE HELPERS
+   Backed by a small Node/Express server (see server.js) instead of the
+   Artifacts-only window.storage API, so this works as a plain static file.
+   Change API_BASE if the server runs somewhere other than localhost:8787.
+   ========================================================================= */
+const API_BASE = 'http://127.0.0.1:8787';
+async function getRoom(code){
+  try{
+    const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(code)}`);
+    if(res.status===404) return null;
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+}
+async function saveRoomRaw(r){
+  try{
+    const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(r.code)}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(r)
+    });
+    return res.ok;
+  }catch(e){ return false; }
+}
+async function pushRoom(r){
+  if(myId===r.hostId) r.hostElo = playerElo;
+  else if(myId===r.guestId) r.guestElo = playerElo;
+  r.version = (r.version||0)+1;
+  room = r;
+  render();
+  await saveRoomRaw(r);
+}
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(async ()=>{
+    if(!roomCode) return;
+    const r = await getRoom(roomCode);
+    if(!r) return;
+    const wasWaiting = room && room.status==='waiting';
+    room = r;
+    if(wasWaiting && r.status!=='active' && r.status!=='waiting'){ /* no-op */ }
+    if(view==='online-lobby' && r.status==='active'){ view='game'; navReplace('game'); }
+    render();
+  }, 1200);
+}
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+/* =========================================================================
+   CLOCK
+   ========================================================================= */
+let clockTicker=null;
+function startClockTicker(){
+  if(clockTicker) clearInterval(clockTicker);
+  clockTicker = setInterval(tickClock, 250);
+}
+function activeClock(){
+  if(mode==='online') return room ? {whiteTime:room.whiteTime, blackTime:room.blackTime, turnStartedAt:room.turnStartedAt, timeControl:room.timeControl, turn: room.state.turn} : null;
+  if(game) return {...game.clock, turn: game.state.turn};
+  return null;
+}
+function liveRemaining(clock, color){
+  if(!clock || clock.timeControl==null) return null;
+  const base = color==='w' ? clock.whiteTime : clock.blackTime;
+  if(clock.turn===color){
+    return Math.max(0, base - (Date.now()-clock.turnStartedAt));
+  }
+  return base;
+}
+function tickClock(){
+  const clock = activeClock();
+  if(!clock || clock.timeControl==null) return;
+  const overNow = (mode==='online') ? (room && room.status==='finished') : (game && game.over);
+  if(overNow) return;
+  const wLive = liveRemaining(clock,'w');
+  const bLive = liveRemaining(clock,'b');
+  updateClockDOM(wLive,bLive);
+  if((wLive!==null && wLive<=0) || (bLive!==null && bLive<=0)){
+    const loser = wLive<=0 ? 'w' : 'b';
+    handleFlagFall(loser);
+  }
+}
+function updateClockDOM(wLive,bLive){
+  const wEl = document.getElementById('clockW');
+  const bEl = document.getElementById('clockB');
+  if(wEl && wLive!==null) wEl.textContent = fmtClock(wLive);
+  if(bEl && bLive!==null) bEl.textContent = fmtClock(bLive);
+  if(wEl) wEl.classList.toggle('low', wLive!==null && wLive<15000);
+  if(bEl) bEl.classList.toggle('low', bLive!==null && bLive<15000);
+}
+function fmtClock(ms){
+  if(ms==null) return '—';
+  const s = Math.max(0,Math.ceil(ms/1000));
+  const m = Math.floor(s/60);
+  const rem = s%60;
+  return `${m}:${rem<10?'0':''}${rem}`;
+}
+function handleFlagFall(loserColor){
+  if(mode==='online'){
+    if(!room || room.status==='finished') return;
+    room.status='finished';
+    room.result = 'timeout-'+loserColor;
+    pushRoom(room);
+  } else if(game && !game.over){
+    game.over=true;
+    game.result = 'timeout-'+loserColor;
+    render();
+  }
+}
+
+/* =========================================================================
+   GAME VIEW
+   ========================================================================= */
+function currentState(){ return mode==='online' ? (room?room.state:null) : (game?game.state:null); }
+function isGameOver(){ return mode==='online' ? (room && room.status==='finished') : (game && game.over); }
+function resultLabel(){
+  const res = mode==='online' ? (room?room.result:null) : (game?game.result:null);
+  if(!res) return '';
+  if(res==='checkmate'){
+    const winner = currentState().turn==='w' ? 'Black' : 'White';
+    return `Checkmate — ${winner} wins`;
+  }
+  if(res==='stalemate') return 'Draw by stalemate';
+  if(res==='draw-50') return 'Draw — 50-move rule';
+  if(res==='draw-material') return 'Draw — insufficient material';
+  if(res==='draw-repetition') return 'Draw — threefold repetition';
+  if(res==='resigned-w') return 'White resigned — Black wins';
+  if(res==='resigned-b') return 'Black resigned — White wins';
+  if(res==='timeout-w') return "White's flag fell — Black wins";
+  if(res==='timeout-b') return "Black's flag fell — White wins";
+  if(res==='draw-agreed') return 'Draw by agreement';
+  return res;
+}
+
+function renderGame(){
+  const state = currentState();
+  if(!state){ view='setup'; navReplace('setup'); render(); return; }
+  finalizeOnlineEloIfNeeded();
+  finalizeLocalHistoryIfNeeded();
+  const status = isGameOver() ? (mode==='online'?room.result:game.result) : gameStatus(state);
+
+  const rows = orientation==='w' ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  const cols = orientation==='w' ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+
+  const lastMove = state.history[state.history.length-1];
+  const kingInCheck = (status==='check'||status==='checkmate') ? findKing(state.board, state.turn) : null;
+
+  let boardHTML='';
+  for(const r of rows){
+    for(const c of cols){
+      const isLight = (r+c)%2===0;
+      const p = state.board[r][c];
+      let cls = 'sq ' + (isLight?'light':'dark');
+      if(selected && selected.r===r && selected.c===c) cls+=' selected';
+      if(lastMove && lastMove.from.r===r && lastMove.from.c===c) cls+=' last-from';
+      if(lastMove && lastMove.to.r===r && lastMove.to.c===c) cls+=' last-to';
+      if(kingInCheck && kingInCheck.r===r && kingInCheck.c===c) cls+=' in-check';
+      const legalHere = legalForSelected.find(m=>m.to.r===r && m.to.c===c);
+      if(legalHere) cls+=' legal';
+      const showFileLabel = (orientation==='w' ? r===7 : r===0);
+      const showRankLabel = (orientation==='w' ? c===0 : c===7);
+      boardHTML += `<div class="${cls}" data-r="${r}" data-c="${c}">
+        ${showFileLabel?`<span class="coord file">${FILES[c]}</span>`:''}
+        ${showRankLabel?`<span class="coord rank">${8-r}</span>`:''}
+        ${p?`<span class="piece ${pieceColor(p)==='w'?'white':'black'}">${PIECE_GLYPH[p]}</span>`:''}
+        ${legalHere?`<span class="hint ${legalHere.captured||legalHere.isEnPassant?'capture':''}"></span>`:''}
+      </div>`;
+    }
+  }
+
+  const capturedInfo = computeCaptured(state.board);
+
+  const topColor = orientation==='w' ? 'b' : 'w';
+  const bottomColor = orientation==='w' ? 'w' : 'b';
+  const names = playerNames();
+
+  const clock = activeClock();
+  const showClock = clock && clock.timeControl!=null;
+
+  const historyRows = [];
+  for(let i=0;i<state.history.length;i+=2){
+    historyRows.push({n:(i/2)+1, w:state.history[i], b:state.history[i+1]});
+  }
+  const historyHTML = historyRows.map(row=>{
+    const wSan = row.w ? sanForIndex(state, state.history.indexOf(row.w)) : '';
+    const bSan = row.b ? sanForIndex(state, state.history.indexOf(row.b)) : '';
+    return `<tr><td class="n">${row.n}.</td><td>${wSan}</td><td>${bSan}</td></tr>`;
+  }).join('');
+
+  const statusText = statusBannerText(status);
+  const isCheckish = status==='check'||status==='checkmate';
+
+  const canUndo = (mode==='local'||mode==='ai') && !isGameOver() && game.state.history.length>0 && !(mode==='ai' && game.aiThinking);
+  const inCheckClass = isCheckish ? 'check' : '';
+
+  const chatHTML = mode==='online' ? renderChat() : '';
+  const roomInfoHTML = mode==='online' ? renderRoomInfo() : '';
+
+  app.innerHTML = `
+    <div class="game-grid">
+      <div class="board-col">
+        <div class="player-strip">
+          <div class="who"><span class="swatch ${topColor}"></span><span class="name">${names[topColor]}</span></div>
+          ${showClock?`<span class="clock ${clock.turn===topColor?'active':''}" id="clock${topColor.toUpperCase()}">${fmtClock(liveRemaining(clock,topColor))}</span>`:''}
+        </div>
+        <div class="captured-row">${capturedInfo[topColor].icons}<span class="adv">${capturedInfo[topColor].adv>0?'+'+capturedInfo[topColor].adv:''}</span></div>
+
+        <div class="board-shell">
+          <div class="board" id="board">${boardHTML}</div>
+        </div>
+
+        <div class="captured-row">${capturedInfo[bottomColor].icons}<span class="adv">${capturedInfo[bottomColor].adv>0?'+'+capturedInfo[bottomColor].adv:''}</span></div>
+        <div class="player-strip">
+          <div class="who"><span class="swatch ${bottomColor}"></span><span class="name">${names[bottomColor]}</span></div>
+          ${showClock?`<span class="clock ${clock.turn===bottomColor?'active':''}" id="clock${bottomColor.toUpperCase()}">${fmtClock(liveRemaining(clock,bottomColor))}</span>`:''}
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="status-banner ${inCheckClass}">${statusText}</div>
+
+        ${roomInfoHTML}
+
+        <div class="panel history-panel">
+          <table><tbody>${historyHTML || `<tr><td class="n small-muted">—</td><td class="small-muted">No moves yet</td></tr>`}</tbody></table>
+        </div>
+
+        <div class="panel">
+          <div class="controls-grid">
+            <button class="btn sm" id="btnFlip">Flip board</button>
+            <button class="btn sm" id="btnUndo" ${canUndo?'':'disabled'}>Undo move</button>
+            ${mode==='online' ? `<button class="btn sm danger" id="btnResign" ${isGameOver()?'disabled':''}>Resign</button>` : (mode==='ai'?`<button class="btn sm danger" id="btnResign" ${isGameOver()?'disabled':''}>Resign</button>`:'')}
+            ${mode==='online' ? `<button class="btn sm" id="btnDraw" ${isGameOver() || (room && room.drawOffer===myColor) ?'disabled':''}>${room && room.drawOffer && room.drawOffer!==myColor ? 'Accept draw' : (room && room.drawOffer===myColor ? 'Draw offered' : 'Offer draw')}</button>` : ''}
+            <button class="btn sm gold" id="btnNewGame" style="grid-column: ${mode==='local'?'1 / -1':'auto'};">${mode==='online' ? 'Rematch' : 'New game'}</button>
+            ${mode!=='online' ? `<button class="btn sm ghost" id="btnExit">Back to setup</button>` : `<button class="btn sm ghost" id="btnExit">Leave room</button>`}
+          </div>
+          <div class="toggle-row" style="margin-top:12px;">
+            <span>Move sounds</span>
+            <div class="switch ${soundOn?'on':''}" id="soundToggle"></div>
+          </div>
+        </div>
+
+        ${chatHTML}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('board').addEventListener('pointerdown', onBoardPointerDown);
+  document.getElementById('btnFlip').addEventListener('click', ()=>{ orientation = orientation==='w'?'b':'w'; render(); });
+  const undoBtn = document.getElementById('btnUndo');
+  if(undoBtn) undoBtn.addEventListener('click', doUndo);
+  const resignBtn = document.getElementById('btnResign');
+  if(resignBtn) resignBtn.addEventListener('click', doResign);
+  const drawBtn = document.getElementById('btnDraw');
+  if(drawBtn) drawBtn.addEventListener('click', doDrawAction);
+  document.getElementById('btnNewGame').addEventListener('click', doNewGameOrRematch);
+  document.getElementById('btnExit').addEventListener('click', exitToSetup);
+  document.getElementById('soundToggle').addEventListener('click', ()=>{ soundOn=!soundOn; render(); });
+
+  if(pendingPromo) renderPromoModal();
+  else if(isGameOver()) renderEndModal(status);
+}
+
+function sanForIndex(state, idx){
+  // Re-derive SAN by replaying up to idx to know check/mate status at that point (cheap enough for casual games)
+  let s = createInitialState();
+  let san = '';
+  for(let i=0;i<=idx;i++){
+    const mv = state.history[i];
+    const before = s;
+    s = applyMove(s, mv);
+    if(i===idx){
+      const stAfter = gameStatus(s);
+      san = moveToSAN(mv, stAfter==='checkmate'?'checkmate':stAfter==='check'?'check':'');
+    }
+  }
+  return san;
+}
+
+function statusBannerText(status){
+  if(status==='checkmate'){
+    const state=currentState();
+    const winner = state.turn==='w' ? 'Black' : 'White';
+    return `Checkmate. <b>${winner} wins.</b>`;
+  }
+  if(status==='stalemate') return 'Draw by stalemate.';
+  if(status==='draw-50') return 'Draw — 50 moves without a capture or pawn move.';
+  if(status==='draw-material') return 'Draw — insufficient material to checkmate.';
+  if(status==='draw-repetition') return 'Draw — threefold repetition.';
+  if(typeof status==='string' && status.startsWith('resigned')) return resultLabel();
+  if(typeof status==='string' && status.startsWith('timeout')) return resultLabel();
+  if(status==='draw-agreed') return 'Draw by agreement.';
+  const state=currentState();
+  const turnName = state.turn==='w'?'White':'Black';
+  if(status==='check') return `${turnName} to move — <b>in check.</b>`;
+  if(mode==='online' && room && room.status==='waiting') return 'Waiting for your opponent to join…';
+  if(mode==='ai' && game.aiThinking) return `${turnName} to move — <b>thinking…</b>`;
+  return `${turnName} to move.`;
+}
+
+function playerNames(){
+  if(mode==='online'){
+    const hostElo = room && room.hostElo!=null ? room.hostElo : 200;
+    const guestElo = room && room.guestElo!=null ? room.guestElo : 200;
+    const hostLabel = (room && room.hostColor==='w' ? 'Host (White)' : 'Host (Black)') + ` · ${hostElo} Elo`;
+    const guestLabel = (room && room.hostColor==='w' ? 'Guest (Black)' : 'Guest (White)') + ` · ${guestElo} Elo`;
+    const w = room && room.hostColor==='w' ? hostLabel : guestLabel;
+    const b = room && room.hostColor==='w' ? guestLabel : hostLabel;
+    return { w: room && room.guestId ? w : (room && room.hostColor==='w'?hostLabel:'Waiting…'),
+             b: room && room.guestId ? b : (room && room.hostColor==='b'?hostLabel:'Waiting…') };
+  }
+  if(mode==='ai'){
+    const compLabel = `Computer (${game.aiElo} Elo)`;
+    return game.aiColor==='w' ? {w:compLabel, b:'You'} : {w:'You', b:compLabel};
+  }
+  return {w:'White', b:'Black'};
+}
+
+const SIMPLE_VALUE = {P:1,N:3,B:3,R:5,Q:9};
+function computeCaptured(board){
+  const present = {w:{P:0,N:0,B:0,R:0,Q:0}, b:{P:0,N:0,B:0,R:0,Q:0}};
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p=board[r][c];
+    if(!p) continue;
+    const t=pieceType(p);
+    if(present[pieceColor(p)][t]!==undefined) present[pieceColor(p)][t]++;
+  }
+  function capturedBy(color){
+    // pieces of the OPPONENT that are missing = captured by `color`
+    const opp = color==='w'?'b':'w';
+    const icons=[]; let value=0;
+    for(const t of ['Q','R','B','N','P']){
+      const missing = FULL_SET[t]-present[opp][t];
+      for(let i=0;i<missing;i++){ icons.push(PIECE_GLYPH[opp+t]); value += SIMPLE_VALUE[t]; }
+    }
+    return {icons, value};
+  }
+  const capW = capturedBy('w'); // white's captures = missing black pieces, shown on white's row
+  const capB = capturedBy('b');
+  const adv = capW.value - capB.value;
+  return {
+    w: { icons: capW.icons.join(' '), adv: adv>0 ? adv : 0 },
+    b: { icons: capB.icons.join(' '), adv: adv<0 ? -adv : 0 }
+  };
+}
+
+/* ---------- room info & chat (online) ---------- */
+function renderRoomInfo(){
+  if(!room) return '';
+  return `
+    <div class="panel room-box">
+      Room code <span class="code">${roomCode}</span><br>
+      You are playing <b style="color:var(--cream)">${myColor?(myColor==='w'?'White':'Black'):'as a spectator'}</b>.
+    </div>
+  `;
+}
+function renderChat(){
+  const msgs = (room && room.chat) ? room.chat : [];
+  const log = msgs.slice(-30).map(m=>`<div class="chat-msg"><b>${m.from==='w'?'White':'Black'}:</b> ${escapeHTML(m.text)}</div>`).join('');
+  return `
+    <div class="panel">
+      <div class="chat-log" id="chatLog">${log || '<span class="small-muted">Say hello.</span>'}</div>
+      <div class="chat-input-row">
+        <input id="chatInput" placeholder="Message your opponent…" ${myColor?'':'disabled'} maxlength="200">
+        <button class="btn sm gold" id="chatSend" ${myColor?'':'disabled'}>Send</button>
+      </div>
+    </div>
+  `;
+}
+function escapeHTML(s){ return s.replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+/* =========================================================================
+   BOARD INTERACTION
+   ========================================================================= */
+/* ---------- Board interaction: tap-tap select/move AND click-or-touch drag ----------
+   A single pointerdown handler covers both interaction styles. Tapping a piece then
+   tapping a highlighted destination still works exactly as before. Pressing on a piece
+   and dragging (mouse OR touch — Pointer Events unify both) shows a floating ghost that
+   follows the pointer and drops the piece on release, using the same move-legality path
+   as tap-tap so nothing about move validation changes. */
+function onBoardPointerDown(e){
+  if(e.button!==undefined && e.button!==0) return; // left-click / primary touch only
+  const sqEl = e.target.closest('.sq');
+  if(!sqEl) return;
+  const r = parseInt(sqEl.dataset.r,10), c = parseInt(sqEl.dataset.c,10);
+  const state = currentState();
+  if(!state || isGameOver() || pendingPromo) return;
+  if(mode==='online' && (myColor!==state.turn || !myColor || (room && room.status!=='active'))) return;
+  if(mode==='ai' && state.turn===game.aiColor) return;
+
+  if(selected){
+    const target = legalForSelected.find(m=>m.to.r===r && m.to.c===c);
+    if(target){
+      completeMoveOrPromo(target);
+      return;
+    }
+  }
+  const p = state.board[r][c];
+  if(p && pieceColor(p)===state.turn){
+    selected = {r,c};
+    legalForSelected = legalMovesForSquare(state,r,c);
+    render();
+    beginPieceDrag(e, r, c, p);
+  } else {
+    selected=null; legalForSelected=[];
+    render();
+  }
+}
+function completeMoveOrPromo(target){
+  if(target._promoChoices){
+    pendingPromo = { baseMove: target };
+    selected=null; legalForSelected=[];
+    render();
+    return;
+  }
+  commitMove(target);
+  selected=null; legalForSelected=[];
+}
+function beginPieceDrag(e, r, c, p){
+  if(typeof e.clientX!=='number') return; // defensive — pointer events always have these
+  const startX=e.clientX, startY=e.clientY;
+  const DRAG_THRESHOLD = 6;
+  let dragging=false, ghost=null;
+
+  const onMove = (ev)=>{
+    const dx=ev.clientX-startX, dy=ev.clientY-startY;
+    if(!dragging){
+      if(Math.hypot(dx,dy) < DRAG_THRESHOLD) return;
+      dragging = true;
+      const sourceEl = document.querySelector(`.sq[data-r="${r}"][data-c="${c}"] .piece`);
+      if(sourceEl) sourceEl.classList.add('drag-hidden');
+      ghost = document.createElement('div');
+      ghost.className = 'drag-ghost ' + (pieceColor(p)==='w'?'white':'black');
+      ghost.textContent = PIECE_GLYPH[p];
+      document.body.appendChild(ghost);
+    }
+    positionGhost(ghost, ev.clientX, ev.clientY);
+    updateHoverSquare(ev.clientX, ev.clientY);
+  };
+  const cleanup = ()=>{
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onCancel);
+    clearHoverSquare();
+    if(ghost) ghost.remove();
+  };
+  const onUp = (ev)=>{
+    cleanup();
+    if(!dragging) return; // plain tap — selection from pointerdown already stands
+    const dropEl = document.elementFromPoint(ev.clientX, ev.clientY);
+    const dropSq = dropEl ? dropEl.closest('.sq') : null;
+    if(dropSq && selected && selected.r===r && selected.c===c){
+      const tr = parseInt(dropSq.dataset.r,10), tc = parseInt(dropSq.dataset.c,10);
+      const target = legalForSelected.find(m=>m.to.r===tr && m.to.c===tc);
+      if(target){ completeMoveOrPromo(target); return; }
+    }
+    render(); // invalid/off-board drop: re-render to restore the piece and clear the ghost state
+  };
+  const onCancel = ()=>{ cleanup(); render(); };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onCancel);
+}
+function positionGhost(el,x,y){ el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`; }
+function updateHoverSquare(x,y){
+  document.querySelectorAll('.sq.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
+  const el = document.elementFromPoint(x,y);
+  const sq = el ? el.closest('.sq') : null;
+  if(sq) sq.classList.add('drop-hover');
+}
+function clearHoverSquare(){
+  document.querySelectorAll('.sq.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
+}
+function oppositeAI(){ return game && game.aiColor==='w' ? 'b' : 'w'; }
+
+/* Both modals below are re-invoked on every render() call — including the
+   automatic ones from online polling, which keeps firing every 1.2s even
+   after the game has ended. Without cleanup, that stacks a fresh, identical
+   veil on top of the DOM every poll cycle: clicking Close/Rematch only
+   removes the newest copy, revealing an older copy underneath, which looks
+   exactly like "no button works." Always clear out any existing veil first
+   so there is ever only one in the DOM. */
+function removeModalVeil(){
+  document.querySelectorAll('.modal-veil').forEach(v=>v.remove());
+}
+
+function renderPromoModal(){
+  removeModalVeil();
+  const color = currentState().turn;
+  const veil = document.createElement('div');
+  veil.className='modal-veil';
+  veil.innerHTML = `
+    <div class="modal">
+      <h3>Promote pawn to…</h3>
+      <div class="promo-choices">
+        ${['Q','R','B','N'].map(t=>`<button data-t="${t}">${PIECE_GLYPH[color+t]}</button>`).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(veil);
+  veil.querySelectorAll('button[data-t]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const move = {...pendingPromo.baseMove, promotion:b.dataset.t};
+      pendingPromo=null;
+      veil.remove();
+      commitMove(move);
+    });
+  });
+}
+
+function renderEndModal(status){
+  removeModalVeil();
+  const veil = document.createElement('div');
+  veil.className='modal-veil';
+  let eloHTML = '';
+  if(mode==='ai' && lastEloResult){
+    const { before, after, delta } = lastEloResult;
+    const sign = delta>0 ? '+' : '';
+    const cls = delta>0 ? 'up' : (delta<0 ? 'down' : '');
+    eloHTML = `<div class="end-elo ${cls}">Your Elo: ${before} → <b>${after}</b> (${sign}${delta})</div>`;
+  }
+  veil.innerHTML = `
+    <div class="modal">
+      <div class="end-msg">${resultLabel()}</div>
+      <div class="end-sub">Good game.</div>
+      ${eloHTML}
+      <div class="row">
+        <button class="btn gold" id="endNewGame">${mode==='online'?'Rematch':'New game'}</button>
+        <button class="btn ghost" id="endClose">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(veil);
+  document.getElementById('endNewGame').addEventListener('click', ()=>{ veil.remove(); doNewGameOrRematch(); });
+  document.getElementById('endClose').addEventListener('click', ()=>{ veil.remove(); });
+}
+
+/* =========================================================================
+   MOVE COMMIT (mode-aware)
+   ========================================================================= */
+function commitMove(move){
+  if(mode==='local') commitLocalMove(move);
+  else if(mode==='ai') commitAIModeMove(move);
+  else if(mode==='online') commitOnlineMove(move);
+}
+
+function commitLocalMove(move){
+  const prevState = game.state;
+  const nextState = applyMove(prevState, move);
+  const status = gameStatus(nextState);
+  advanceLocalClock(prevState.turn);
+  game.state = nextState;
+  playMoveSound(move, status==='checkmate'?'checkmate':status==='check'?'check':'');
+  if(status==='checkmate'||status==='stalemate'||status.startsWith('draw')){
+    game.over=true; game.result=status;
+  }
+  render();
+}
+function commitAIModeMove(move){
+  const prevState = game.state;
+  const nextState = applyMove(prevState, move);
+  const status = gameStatus(nextState);
+  advanceLocalClock(prevState.turn);
+  game.state = nextState;
+  playMoveSound(move, status==='checkmate'?'checkmate':status==='check'?'check':'');
+  if(status==='checkmate'||status==='stalemate'||status.startsWith('draw')){
+    game.over=true; game.result=status;
+    render();
+    return;
+  }
+  render();
+  if(nextState.turn===game.aiColor) scheduleAIMove();
+}
+function advanceLocalClock(colorMoved){
+  const clock = game.clock;
+  if(!clock.timeControl) return;
+  const elapsed = Date.now()-clock.turnStartedAt;
+  const key = colorMoved==='w'?'whiteTime':'blackTime';
+  clock[key] = Math.max(0, clock[key]-elapsed) + (clock.timeControl.increment||0);
+  clock.turnStartedAt = Date.now();
+}
+function scheduleAIMove(){
+  game.aiThinking = true;
+  render();
+  setTimeout(()=>{
+    if(!game || game.over) return;
+    const move = findBestMoveGraded(game.state, game.aiParams);
+    game.aiThinking = false;
+    if(!move){ return; }
+    commitAIModeMove(move);
+  }, 380 + Math.random()*380);
+}
+
+async function commitOnlineMove(move){
+  if(!room) return;
+  const prevState = room.state;
+  const nextState = applyMove(prevState, move);
+  const status = gameStatus(nextState);
+
+  if(room.timeControl){
+    const elapsed = Date.now()-room.turnStartedAt;
+    const key = prevState.turn==='w'?'whiteTime':'blackTime';
+    room[key] = Math.max(0, room[key]-elapsed) + (room.timeControl.increment||0);
+  }
+  room.turnStartedAt = Date.now();
+  room.state = nextState;
+  room.drawOffer = null;
+  if(status==='checkmate'||status==='stalemate'||status.startsWith('draw')){
+    room.status='finished'; room.result=status;
+  }
+  playMoveSound(move, status==='checkmate'?'checkmate':status==='check'?'check':'');
+  await pushRoom(room);
+}
+
+/* =========================================================================
+   UNDO / RESIGN / DRAW / NEW GAME
+   ========================================================================= */
+function doUndo(){
+  if(mode==='local'){
+    if(game.state.history.length===0) return;
+    game.state = replayUpTo(game.state.history.length-1);
+    render();
+  } else if(mode==='ai'){
+    let target = game.state.history.length-1;
+    // undo back to human's turn: remove AI's last move and the human move before it if needed
+    if(target<0) return;
+    const lastMover = game.state.history[target] ? pieceColor(game.state.history[target].piece) : null;
+    if(lastMover===game.aiColor && target-1>=0) target -= 1; // also remove the human move preceding AI's reply
+    target -= 1;
+    game.state = replayUpTo(Math.max(0,target+1));
+    game.over=false; game.result=null;
+    render();
+  }
+}
+function replayUpTo(count){
+  const hist = (mode==='local'||mode==='ai') ? game.state.history.slice(0,count) : [];
+  let s = createInitialState();
+  for(const mv of hist){ s = applyMove(s, mv); }
+  return s;
+}
+
+function doResign(){
+  if(mode==='ai'){
+    game.over=true;
+    game.result = `resigned-${orientationHumanColor()}`;
+    render();
+  } else if(mode==='online' && room && myColor){
+    room.status='finished';
+    room.result = `resigned-${myColor}`;
+    pushRoom(room);
+  }
+}
+function orientationHumanColor(){ return game.aiColor==='w' ? 'b' : 'w'; }
+
+function doDrawAction(){
+  if(mode!=='online' || !room || !myColor) return;
+  if(room.drawOffer && room.drawOffer!==myColor){
+    room.status='finished'; room.result='draw-agreed';
+    pushRoom(room);
+  } else if(!room.drawOffer){
+    room.drawOffer = myColor;
+    pushRoom(room);
+  }
+}
+
+function doNewGameOrRematch(){
+  if(mode==='local'){
+    startLocalGame();
+  } else if(mode==='ai'){
+    startAIGame();
+  } else if(mode==='online' && room){
+    const freshState = createInitialState();
+    room.state = freshState;
+    room.status='active';
+    room.result=null;
+    room.drawOffer=null;
+    room.eloGameId = roomCode+'-'+Date.now();
+    room.hostColor = room.hostColor==='w'?'b':'w'; // swap sides each rematch
+    room.whiteTime = room.timeControl?room.timeControl.initial:null;
+    room.blackTime = room.timeControl?room.timeControl.initial:null;
+    room.turnStartedAt = Date.now();
+    myColor = (room.hostId===myId) ? room.hostColor : (room.hostColor==='w'?'b':'w');
+    orientation = myColor||'w';
+    pushRoom(room);
+  }
+}
+
+function leaveActiveSession(nextView){
+  stopPolling();
+  if(clockTicker) clearInterval(clockTicker);
+  view=nextView; mode=null; game=null; room=null; roomCode=null; myColor=null; selected=null; legalForSelected=[];
+  eloAppliedForGameId=null; lastEloResult=null;
+  if(nextView==='setup') navReplace('setup'); else navPush(nextView);
+  render();
+}
+function exitToSetup(){ leaveActiveSession('setup'); }
+function goToHistory(){ leaveActiveSession('history'); }
+function goHome(){ if(view!=='setup') leaveActiveSession('setup'); }
+
+/* ---------- chat send (delegated, since chat panel re-renders) ---------- */
+document.addEventListener('click', (e)=>{
+  if(e.target && e.target.id==='chatSend'){
+    const input = document.getElementById('chatInput');
+    const text = (input.value||'').trim();
+    if(!text || !room || !myColor) return;
+    room.chat = room.chat || [];
+    room.chat.push({from:myColor, text, ts:Date.now()});
+    input.value='';
+    pushRoom(room);
+  }
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.target && e.target.id==='chatInput' && e.key==='Enter'){
+    document.getElementById('chatSend').click();
+  }
+});
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+document.getElementById('btnHistoryNav').addEventListener('click', goToHistory);
+document.getElementById('btnHomeNav').addEventListener('click', goHome);
+navReplace('setup');
+render();
+</script>
+</body>
+</html>
