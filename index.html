@@ -1365,11 +1365,13 @@ async function joinOnlineRoom(code){
 
 /* =========================================================================
    ONLINE STORAGE HELPERS
-   Backed by a small Node/Express server (see server.js) instead of the
-   Artifacts-only window.storage API, so this works as a plain static file.
-   Change API_BASE if the server runs somewhere other than localhost:8787.
+   Backed by Vercel Serverless Functions (api/rooms/[code].js) on Neon
+   Postgres, served from the same origin as the static site — no separate
+   host needed. See DEPLOY.md. Works both in production and with
+   `vercel dev` locally, since that command serves the static file and
+   the /api routes together on the same origin.
    ========================================================================= */
-const API_BASE = 'http://127.0.0.1:8787';
+const API_BASE = '/api';
 async function getRoom(code){
   try{
     const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(code)}`);
